@@ -1,10 +1,12 @@
+
+/*
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-/*
+
 class ProfileChangeScreen extends StatefulWidget {
   const ProfileChangeScreen({Key? key}) : super(key: key);
 
@@ -242,8 +244,8 @@ class _ProfileChangeScreenState extends State<ProfileChangeScreen> {
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      firstNameController.text = prefs.getString('firstName') ?? 'Mario';
-      lastNameController.text = prefs.getString('lastName') ?? 'Rossi';
+      firstNameController.text = prefs.getString('firstName') ?? 'Inserisci Nome';
+      lastNameController.text = prefs.getString('lastName') ?? 'Inserisci Cognome';
     });
   }
 
@@ -392,5 +394,4 @@ class _ProfileChangeScreenState extends State<ProfileChangeScreen> {
       ),
     );
   }
-}
-
+} 

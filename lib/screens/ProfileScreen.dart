@@ -303,8 +303,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      firstName = prefs.getString('firstName') ?? 'Mario';
-      lastName = prefs.getString('lastName') ?? 'Rossi';
+      firstName = prefs.getString('firstName') ?? 'Thomas';
+      lastName = prefs.getString('lastName') ?? 'Testa';
       profileImageUrl = prefs.getString('profileImage');
       if (profileImageUrl != null) {
         _image = File(profileImageUrl!);
@@ -360,12 +360,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Profilo Utente'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: const Text('Profilo Utente', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: theme.colorScheme.primary,
+        elevation: 4,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -374,76 +375,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.25,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              color: Colors.white,
-              padding: const EdgeInsets.only(top: 140, left: 20, right: 20),
-              child: Column(
-                children: [
-                  Text('$firstName $lastName',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text(widget.email,
-                      style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfileChangeScreen()),
-                      );
-                      if (result == true) {
-                        _loadUserData();
-                      }
-                    },
-                    child: const Text('Modifica Profilo'),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [theme.colorScheme.primary.withOpacity(0.1), theme.colorScheme.surface],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: CircleAvatar(
+                    radius: 70,
+                    backgroundColor: theme.colorScheme.primary,
+                    backgroundImage: _image != null ? FileImage(_image!) : null,
+                    child: _image == null
+                        ? const Icon(Icons.person, size: 80, color: Colors.white)
+                        : null,
                   ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.3,
-              color: Colors.blue.shade200,
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.22,
-            child: GestureDetector(
-              onTap: _pickImage,
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.blue.shade800, width: 6),
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
                 ),
-                padding: const EdgeInsets.all(4),
-                child: ClipOval(
-                  child: _image != null
-                      ? Image.file(
-                          _image!,
-                          width: 130,
-                          height: 130,
-                          fit: BoxFit.cover,
-                        )
-                      : const Icon(Icons.person, size: 100, color: Colors.grey),
+                const SizedBox(height: 20),
+                Text(
+                  '$firstName $lastName',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.email,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProfileChangeScreen()),
+                    );
+                    if (result == true) {
+                      _loadUserData();
+                    }
+                  },
+                  icon: const Icon(Icons.edit, color: Colors.white),
+                  label: const Text('Modifica Profilo', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    backgroundColor: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

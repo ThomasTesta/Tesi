@@ -175,10 +175,10 @@ class _HomepageScreenState extends State<HomepageScreen> {
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black38,
-                                blurRadius:12.0,
-                                  spreadRadius: 2.0, // Espande l'ombra
+                                blurRadius:8.0,
+                                  spreadRadius: 1.0, // Espande l'ombra
 
-                                offset: Offset(2, 2),
+                                offset: Offset(1, 1),
                               ),
                             ],
                           ),

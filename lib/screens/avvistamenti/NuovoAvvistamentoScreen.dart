@@ -255,6 +255,7 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
 
 */
 
+/*
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -458,6 +459,209 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
                 onPressed: _isSaving ? null : _saveAvvistamento, 
                 child: _isSaving ? CircularProgressIndicator() : Text("Salva Avvistamento")
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+*/
+
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'package:seawatch/screens/avvistamenti/AggiungiImmaginiScreen.dart';
+
+class NuovoAvvistamentoScreen extends StatefulWidget {
+  final String userEmail;
+
+  NuovoAvvistamentoScreen({required this.userEmail});
+
+  @override
+  _NuovoAvvistamentoScreenState createState() => _NuovoAvvistamentoScreenState();
+}
+
+class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _esemplariController = TextEditingController();
+  final TextEditingController _latitudeController = TextEditingController();
+  final TextEditingController _longitudeController = TextEditingController();
+  final TextEditingController _mareController = TextEditingController();
+  final TextEditingController _ventoController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
+
+  bool _isSaving = false;
+  String? _selectedAnimale;
+  String? _selectedSpecie;
+
+  List<String> animali = ['Delfino', 'Balena', 'Squalo', 'Tartaruga'];
+  Map<String, List<String>> specieMap = {
+    'Delfino': ['Tursiope', 'Stenella'],
+    'Balena': ['Balena Blu', 'Capodoglio'],
+    'Squalo': ['Squalo Bianco', 'Squalo Martello'],
+    'Tartaruga': ['Caretta', 'Liuto'],
+  };
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever) return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    setState(() {
+      _latitudeController.text = position.latitude.toString();
+      _longitudeController.text = position.longitude.toString();
+    });
+  }
+
+  Future<void> _saveAvvistamento() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+
+    const url = 'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_sighting/sighting_api.php';
+    final body = {
+      'request': 'saveAvvMob',
+      'idd': '0',
+      'user': widget.userEmail,
+      'data': DateTime.now().toIso8601String(),
+      'esemplari': _esemplariController.text,
+      'latitudine': _latitudeController.text,
+      'longitudine': _longitudeController.text,
+      'specie': _selectedAnimale ?? '',
+      'sottospecie': _selectedSpecie ?? '',
+      'mare': _mareController.text,
+      'vento': _ventoController.text,
+      'note': _noteController.text,
+    };
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(url))..fields.addAll(body);
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        final responseJson = jsonDecode(responseBody);
+        final avvistamentoId = responseJson['avvistamentoId'];
+
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Avvistamento salvato con successo!")));
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AggiungiImmaginiScreen(avvistamentoId: avvistamentoId)),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Errore nel salvataggio.")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore di rete: $e")));
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  Widget _buildInputField({required TextEditingController controller, required String label, required IconData icon, TextInputType? keyboardType}) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            prefixIcon: Icon(icon, color: Colors.blue),
+            border: InputBorder.none,
+          ),
+          validator: (value) => value!.isEmpty ? "Campo obbligatorio" : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({required String label, required List<String> items, required String? value, required Function(String?) onChanged}) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: DropdownButtonFormField(
+          value: value,
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            border: InputBorder.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButton({required String text, required Color color, required IconData icon, required VoidCallback onPressed}) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(text, style: const TextStyle(fontSize: 16)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+        final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Nuovo Avvistamento", style: TextStyle(fontWeight: FontWeight.bold)),        backgroundColor: theme.colorScheme.primary),
+
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade50, Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              _buildInputField(controller: _esemplariController, label: "Numero di esemplari", icon: Icons.numbers, keyboardType: TextInputType.number),
+              const SizedBox(height: 16),
+              _buildButton(text: "Ottieni Posizione GPS", color: Colors.blue, icon: Icons.location_on, onPressed: _getCurrentLocation),
+              const SizedBox(height: 16),
+              _buildDropdown(label: "Animale", items: animali, value: _selectedAnimale, onChanged: (val) => setState(() => _selectedAnimale = val)),
+              const SizedBox(height: 16),
+              _buildDropdown(label: "Specie", items: _selectedAnimale != null ? specieMap[_selectedAnimale]! : [], value: _selectedSpecie, onChanged: (val) => setState(() => _selectedSpecie = val)),
+              const SizedBox(height: 16),
+              _buildInputField(controller: _mareController, label: "Mare", icon: Icons.waves),
+              const SizedBox(height: 16),
+              _buildInputField(controller: _ventoController, label: "Vento", icon: Icons.air),
+              const SizedBox(height: 16),
+              _buildInputField(controller: _noteController, label: "Note", icon: Icons.note),
+              const SizedBox(height: 16),
+              _buildButton(text: "Carica  immagine", color: Colors.blue, icon: Icons.photo, onPressed: _saveAvvistamento),
+              const SizedBox(height: 32),
+
+              _buildButton(text: "Salva Avvistamento", color: Colors.green, icon: Icons.save, onPressed: _saveAvvistamento),
             ],
           ),
         ),

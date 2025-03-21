@@ -180,105 +180,102 @@ class LoginScreen extends StatelessWidget {
         );
       }
     }
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-
-                // Logo
-                Image.asset(
-                  'assets/images/FinSpot_pos.png',
-                  height: 120,
-                ),
-                const SizedBox(height: 40),
-
-                // Campo Email
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: 'Email',
-                    prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10.0, horizontal: 16.0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                      borderSide: const BorderSide(color: Colors.grey, width: 1.0),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade200,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Campo Password
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  style: const TextStyle(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: 'Password',
-                    prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10.0, horizontal: 16.0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                      borderSide: const BorderSide(color: Colors.grey, width: 1.0),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade200,
-                  ),
-                ),
-                const SizedBox(height: 40),
-
-                // Pulsante "Accedi"
-                ElevatedButton.icon(
-                  onPressed: _login, // Metodo aggiornato con supporto offline
-                  icon: const Icon(Icons.login, size: 24),
-                  label: const Text(
-                    'Accedi',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50.0),
-                    ),
-                    minimumSize: const Size(double.infinity, 56),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Pulsante "Registrati"
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/registrazione');
-                  },
-                  child: const Text(
-                    'Non hai un account? Registrati',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.blue,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
+return Scaffold(
+  backgroundColor: Colors.white,
+  body: SafeArea(
+    child: Center( // Questo centra il contenuto nella schermata
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Evita che la colonna occupi tutto lo spazio
+          mainAxisAlignment: MainAxisAlignment.center, // Centra verticalmente
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/FinSpot_pos.png',
+              height: 120,
             ),
-          ),
+            const SizedBox(height: 40),
+
+            // Campo Email
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Email',
+                prefixIcon: const Icon(Icons.email, color: Colors.grey),
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10.0, horizontal: 16.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.grey, width: 1.0),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade200,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Campo Password
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              style: const TextStyle(fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Password',
+                prefixIcon: const Icon(Icons.lock, color: Colors.grey),
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10.0, horizontal: 16.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: const BorderSide(color: Colors.grey, width: 1.0),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade200,
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // Pulsante "Accedi"
+            ElevatedButton.icon(
+              onPressed: _login,
+              icon: const Icon(Icons.login, size: 24),
+              label: const Text(
+                'Accedi',
+                style: TextStyle(fontSize: 18),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50.0),
+                ),
+                minimumSize: const Size(double.infinity, 56),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Pulsante "Registrati"
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/registrazione');
+              },
+              child: const Text(
+                'Non hai un account? Registrati',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

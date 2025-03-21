@@ -67,5 +67,5 @@ class SettingsScreen extends StatelessWidget {
         },
       ),
     );
-  }
+  }   //commento diu opriva
 }
