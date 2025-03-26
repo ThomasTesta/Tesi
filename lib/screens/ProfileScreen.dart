@@ -269,10 +269,7 @@ ElevatedButton(
 */
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:seawatch/screens/authentication/LoginScreen.dart';
 import 'package:seawatch/screens/settingScreens/ProfileChangeScreen.dart';
@@ -289,63 +286,71 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String? profileImageUrl;
-  String firstName = "";
-  String lastName = "";
-  File? _image;
-  final ImagePicker _picker = ImagePicker();
+  String? firstName;
+  String? lastName;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    fetchProfileData();
   }
 
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      firstName = prefs.getString('firstName') ?? 'Thomas';
-      lastName = prefs.getString('lastName') ?? 'Testa';
-      profileImageUrl = prefs.getString('profileImage');
-      if (profileImageUrl != null) {
-        _image = File(profileImageUrl!);
-      }
-    });
-    await _loadUserDataFromServer();
-  }
-
-  Future<void> _loadUserDataFromServer() async {
+  Future<void> fetchProfileData() async {
     const String apiUrl =
         'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_settings/settings_api.php';
+    const String imageBaseUrl = 'https://isi-seawatch.csr.unibo.it/Sito/img/profilo/';
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
-        body: json.encode({'action': 'getUserInfoMob', 'user': widget.email}),
-        headers: {'Content-Type': 'application/json'},
+        body: {
+          'user': widget.email,
+          'request': 'getUserInfoMob',
+        },
       );
 
       if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        if (result['stato'] == true) {
-          final userData = result['data'];
+        final body = response.body.trim();
+        if (body.isNotEmpty) {
+          final data = json.decode(body);
+
+          if (data is List && data.isNotEmpty) {
+            final userInfo = data[0];
+
+            setState(() {
+              profileImageUrl = userInfo['Img'] != null && userInfo['Img'].isNotEmpty
+                  ? imageBaseUrl + userInfo['Img']
+                  : null;
+              firstName = userInfo['Nome'];
+              lastName = userInfo['Cognome'];
+              isLoading = false;
+            });
+          } else {
+            setState(() {
+              profileImageUrl = null;
+              firstName = null;
+              lastName = null;
+              isLoading = false;
+            });
+          }
+        } else {
+          debugPrint('Errore: il server ha restituito una risposta vuota.');
           setState(() {
-            firstName = userData['nome'] ?? 'Mario';
-            lastName = userData['cognome'] ?? 'Rossi';
+            isLoading = false;
           });
         }
+      } else {
+        debugPrint('Errore nella richiesta: codice ${response.statusCode}');
+        setState(() {
+          isLoading = false;
+        });
       }
     } catch (e) {
-      debugPrint('Errore caricamento dati: $e');
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+      debugPrint('Eccezione durante la richiesta HTTP: $e');
       setState(() {
-        _image = File(pickedFile.path);
+        isLoading = false;
       });
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('profileImage', pickedFile.path);
     }
   }
 
@@ -389,20 +394,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: CircleAvatar(
-                    radius: 70,
-                    backgroundColor: theme.colorScheme.primary,
-                    backgroundImage: _image != null ? FileImage(_image!) : null,
-                    child: _image == null
-                        ? const Icon(Icons.person, size: 80, color: Colors.white)
-                        : null,
-                  ),
+                CircleAvatar(
+                  radius: 70,
+                  backgroundColor: theme.colorScheme.primary,
+                  backgroundImage: profileImageUrl != null
+                      ? NetworkImage(profileImageUrl!) // Carica immagine dal server
+                      : null,
+                  child: profileImageUrl == null
+                      ? const Icon(Icons.person, size: 80, color: Colors.white) // Placeholder
+                      : null,
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  '$firstName $lastName',
+                  '${firstName ?? "Nome"} ${lastName ?? "Cognome"}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
@@ -420,7 +424,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       MaterialPageRoute(builder: (context) => const ProfileChangeScreen()),
                     );
                     if (result == true) {
-                      _loadUserData();
+                      fetchProfileData();
                     }
                   },
                   icon: const Icon(Icons.edit, color: Colors.white),
