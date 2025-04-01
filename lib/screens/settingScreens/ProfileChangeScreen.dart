@@ -176,6 +176,34 @@ Future<bool> uploadImage(File file, String user) async {
   return false;
 }
 
+Future<void> _handleImageUpload() async {
+  await _pickImage(); // Seleziona l'immagine
+
+  if (_image == null) {
+    _showSnackBar("Nessuna immagine selezionata.");
+    return;
+  }
+
+  final prefs = await SharedPreferences.getInstance();
+  final email = prefs.getString('userEmail');
+
+  if (email == null) {
+    _showSnackBar("Errore: Utente non loggato.");
+    return;
+  }
+
+  setState(() => isLoading = true);
+
+  bool success = await uploadImage(_image!, email);
+
+  setState(() => isLoading = false);
+
+  if (success) {
+    _showSnackBar("Immagine aggiornata con successo!");
+  }
+}
+
+
 
   Future<void> _pickImage() async {
     final source = await showDialog<ImageSource>(
@@ -276,13 +304,13 @@ Future<bool> uploadImage(File file, String user) async {
                       isBold: true,
                     ),
                     const SizedBox(height: 20),
-                    // Pulsante per aggiornare l'immagine del profilo
-                    _buildButton(
-                      text: 'Aggiorna immagine del profilo',
-                      color: theme.colorScheme.secondary,
-                      icon: Icons.image,
-                      onPressed: _pickImage,
-                    ),
+_buildButton(
+  text: 'Aggiorna immagine del profilo',
+  color: theme.colorScheme.secondary,
+  icon: Icons.image,
+  onPressed: _handleImageUpload,
+),
+
                     const SizedBox(height: 10),
                     // Pulsante per salvare le modifiche
 _buildButton(
