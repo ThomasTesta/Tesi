@@ -43,17 +43,18 @@ class AuthServices {
         };
       }
 
-      // Funzione per calcolare l'HMAC SHA-512
-      String calculateHmacSha512(String input, String key) {
-        // Usa una libreria come `crypto` per implementare l'HMAC
-        // Qui è necessario importare `crypto`
-        // import 'dart:convert';
-        // import 'package:crypto/crypto.dart';
+String calculateHmacSha512(String input, String key) {
+  final hmac = Hmac(sha512, utf8.encode(key)); // Usa la chiave direttamente
+  final digest = hmac.convert(utf8.encode(input));
+  
+  print("HMAC di '$input' con chiave diretta: $digest"); // Debug
+  return digest.toString();
+}
 
-        final hmac = Hmac(sha512, utf8.encode(key));
-        final digest = hmac.convert(utf8.encode(input));
-        return digest.toString();
-      }
+
+
+
+
 
       final oldHashed = calculateHmacSha512(oldPassword, key);
       final newHashed = calculateHmacSha512(newPassword, key);

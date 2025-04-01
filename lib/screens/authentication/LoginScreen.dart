@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:seawatch/services/AuthServiceGeneral/AuthService.dart';
 import 'package:seawatch/services/ManagementTheme/ThemeProvider.dart'; // Importiamo il servizio di login
 
-/*
+
 class LoginScreen extends StatelessWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
@@ -139,8 +139,8 @@ class LoginScreen extends StatelessWidget {
     );
   }
 }
-*/
 
+/*
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:seawatch/services/AuthServiceGeneral/AuthService.dart';
@@ -279,3 +279,5 @@ return Scaffold(
 );
   }
 }
+
+*/
