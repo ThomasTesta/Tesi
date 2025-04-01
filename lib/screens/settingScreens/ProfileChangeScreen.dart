@@ -238,6 +238,32 @@ Future<void> _handleImageUpload() async {
     }
   }
 
+  Future<void> _uploadSelectedImage() async {
+  if (_image == null) {
+    _showSnackBar("Nessuna immagine selezionata.");
+    return;
+  }
+
+  final prefs = await SharedPreferences.getInstance();
+  final email = prefs.getString('userEmail');
+
+  if (email == null) {
+    _showSnackBar("Errore: Utente non loggato.");
+    return;
+  }
+
+  setState(() => isLoading = true);
+
+  bool success = await uploadImage(_image!, email);
+
+  setState(() => isLoading = false);
+
+  if (success) {
+    _showSnackBar("Immagine aggiornata con successo!");
+  }
+}
+
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -308,7 +334,7 @@ _buildButton(
   text: 'Aggiorna immagine del profilo',
   color: theme.colorScheme.secondary,
   icon: Icons.image,
-  onPressed: _handleImageUpload,
+  onPressed: _uploadSelectedImage,
 ),
 
                     const SizedBox(height: 10),
@@ -369,3 +395,4 @@ _buildButton(
     );
   }
 }
+
