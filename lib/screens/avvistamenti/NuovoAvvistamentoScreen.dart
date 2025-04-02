@@ -765,7 +765,7 @@ Future<void> _getCurrentLocation() async {
 
   /// **🌍 Funzione per inviare l'avvistamento (mia logica)**
 Future<void> _sendAvvistamento() async {
-  //if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
   if (_latitude == null || _longitude == null) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Devi ottenere la posizione GPS!")));
     return;
@@ -796,7 +796,7 @@ Future<void> _sendAvvistamento() async {
 
   try {
     var response = await http.post(Uri.parse(url), body: body);
-    if (response.statusCode == 200 && response.body == "true") {
+    if (response.statusCode == 200 /*&& response.body == "true"*/) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Avvistamento salvato con successo!")));
 
       // Passa l'ID generato alla schermata successiva
