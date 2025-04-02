@@ -674,7 +674,10 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:seawatch/screens/HomepageScreen.dart';
 import 'dart:convert';
+import 'package:uuid/uuid.dart';
+
 
 import 'package:seawatch/screens/avvistamenti/AggiungiImmaginiScreen.dart';
 
@@ -761,50 +764,57 @@ Future<void> _getCurrentLocation() async {
 
 
   /// **🌍 Funzione per inviare l'avvistamento (mia logica)**
-  Future<void> _sendAvvistamento() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_latitude == null || _longitude == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Devi ottenere la posizione GPS!")));
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    const url = 'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_sighting/sighting_api.php';
-    final body = {
-      'request': 'saveAvvMob',
-      'idd': '0',
-      'user': widget.userEmail,
-      'data': DateTime.now().toIso8601String(),
-      'esemplari': _esemplariController.text,
-      'latitudine': _latitude!,
-      'longitudine': _longitude!,
-      'specie': _selectedAnimale ?? '',
-      'sottospecie': _selectedSpecie ?? '',
-      'mare': _mareController.text,
-      'vento': _ventoController.text,
-      'note': _noteController.text,
-    };
-
-    try {
-      var response = await http.post(Uri.parse(url), body: body);
-      if (response.statusCode == 200 && response.body == "true") {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Avvistamento salvato con successo!")));
-
-        // Dopo il salvataggio, apri la schermata per caricare immagini
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => AggiungiImmaginiScreen(avvistamentoId: "0")), // Puoi passare l'ID corretto
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore nel salvataggio.")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore di rete: $e")));
-    } finally {
-      setState(() => _isSaving = false);
-    }
+Future<void> _sendAvvistamento() async {
+  //if (!_formKey.currentState!.validate()) return;
+  if (_latitude == null || _longitude == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Devi ottenere la posizione GPS!")));
+    return;
   }
+
+  setState(() => _isSaving = true);
+
+  const url = 'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_sighting/sighting_api.php';
+  
+  // Genera un ID unico   // Genera un ID univoco come intero basato sul timestamp attuale
+
+  String avvistamentoId = DateTime.now().millisecondsSinceEpoch.toString();
+
+  final body = {
+    'request': 'saveAvvMob',
+    'idd': avvistamentoId, // Passa l'ID generato
+    'user': widget.userEmail,
+    'data': DateTime.now().toIso8601String(),
+    'esemplari': _esemplariController.text,
+    'latitudine': _latitude!,
+    'longitudine': _longitude!,
+    'specie': _selectedAnimale ?? '',
+    'sottospecie': _selectedSpecie ?? '',
+    'mare': _mareController.text,
+    'vento': _ventoController.text,
+    'note': _noteController.text,
+  };
+
+  try {
+    var response = await http.post(Uri.parse(url), body: body);
+    if (response.statusCode == 200 && response.body == "true") {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Avvistamento salvato con successo!")));
+
+      // Passa l'ID generato alla schermata successiva
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => AggiungiImmaginiScreen(avvistamentoId: avvistamentoId)),
+
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore nel salvataggio.")));
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore di rete: $e")));
+  } finally {
+    setState(() => _isSaving = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
