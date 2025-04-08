@@ -15,28 +15,28 @@ class LoginScreen extends StatelessWidget {
     final TextEditingController passwordController = TextEditingController();
 
     // Funzione per gestire il login
-    void _login() async {
-      final email = emailController.text;
-      final password = passwordController.text;
+void _login() async {
+  final email = emailController.text.trim();
+  final password = passwordController.text;
 
-      if (email.isEmpty || password.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Inserisci email e password'),
-          ),
-        );
-        return;
-      }
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Inserisci email e password')),
+    );
+    return;
+  }
 
-      try {
-        await AuthService().login(email, password); // Chiamata al servizio di login
-        Navigator.pushReplacementNamed(context, '/main'); // Naviga alla schermata principale
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
-        );
-      }
-    }
+  try {
+    await AuthService().attemptLogin(email, password);
+    Navigator.pushReplacementNamed(context, '/main');
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Errore: $e')),
+    );
+  }
+}
+
+
 
     return Scaffold(
       backgroundColor: Colors.white,

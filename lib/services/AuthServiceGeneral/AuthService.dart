@@ -239,15 +239,17 @@ Future<void> changePassword(BuildContext context, String oldPassword, String new
 }
 */
 
+// auth_service.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/io_client.dart';
 import 'package:crypto/crypto.dart';
-import 'package:logger/logger.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:logger/logger.dart';
 
 class AuthService {
   final String baseUrl = "https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_login/login_api.php";
@@ -259,6 +261,15 @@ class AuthService {
     return IOClient(httpClient);
   }
 
+  Future<bool> hasInternetConnection() async {
+    try {
+      final result = await http.get(Uri.parse("https://www.google.com")).timeout(Duration(seconds: 3));
+      return result.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<dynamic> postRequest(Map<String, String> body) async {
     final client = createIoClient();
     try {
@@ -266,10 +277,8 @@ class AuthService {
       body.forEach((key, value) {
         request.fields[key] = value;
       });
-      final response = await request.send().timeout(Duration(seconds: 10));
-
+      final response = await request.send().timeout(const Duration(seconds: 10));
       final responseBody = await response.stream.bytesToString();
-      print("Corpo della risposta del server: $responseBody");
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(responseBody);
@@ -279,8 +288,8 @@ class AuthService {
         throw Exception("Errore del server: ${response.statusCode}");
       }
     } catch (e) {
-      logger.e("Errore durante la richiesta HTTP: $e");
-      throw Exception("Errore durante la richiesta HTTP: $e");
+      logger.e("Errore HTTP: $e");
+      rethrow;
     }
   }
 
@@ -291,42 +300,34 @@ class AuthService {
   }
 
   Future<void> login(String email, String password) async {
-    try {
-      email = email.trim().toLowerCase();
-      print("Verifica email in corso...");
+    email = email.trim().toLowerCase();
 
-      final emailResponse = await postRequest({
-        "request": "email",
+    final emailResponse = await postRequest({
+      "request": "email",
+      "email": email,
+    });
+
+    if (emailResponse is Map && emailResponse["state"] == true && emailResponse["Key"] != null) {
+      final key = emailResponse["Key"];
+      final encryptedPassword = encrypt(password, key);
+
+      final loginResponse = await postRequest({
+        "request": "pwd",
         "email": email,
+        "password": encryptedPassword,
       });
 
-      if (emailResponse is Map && emailResponse["state"] == true && emailResponse["Key"] != null) {
-        final key = emailResponse["Key"];
-        final encryptedPassword = encrypt(password, key);
-
-        final loginResponse = await postRequest({
-          "request": "pwd",
-          "email": email,
-          "password": encryptedPassword,
-        });
-
-        if (loginResponse is Map && loginResponse["state"] == false) {
-          throw Exception(loginResponse["msg"]);
-        }
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isAuthenticated', true);
-        await prefs.setString('userEmail', email);
-        await prefs.setString('encryptedPassword', encryptedPassword);
-        await prefs.setString('encryptionKey', key);
-
-        print("Login effettuato con successo!");
-      } else {
-        throw Exception("Errore: Nessuna chiave trovata per l'email fornita.");
+      if (loginResponse is Map && loginResponse["state"] == false) {
+        throw Exception(loginResponse["msg"]);
       }
-    } catch (e) {
-      print("Errore durante il login: $e");
-      rethrow;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isAuthenticated', true);
+      await prefs.setString('userEmail', email);
+      await prefs.setString('encryptedPassword', encryptedPassword);
+      await prefs.setString('encryptionKey', key);
+    } else {
+      throw Exception("Errore: Nessuna chiave trovata per l'email.");
     }
   }
 
@@ -337,31 +338,31 @@ class AuthService {
     final savedKey = prefs.getString('encryptionKey');
 
     if (savedEmail == null || savedEncryptedPassword == null || savedKey == null) {
-      print("Nessun login offline disponibile.");
       return false;
     }
 
     final encryptedInputPassword = encrypt(password, savedKey);
-    if (email == savedEmail && encryptedInputPassword == savedEncryptedPassword) {
-      print("Login offline riuscito!");
-      return true;
-    }
-
-    print("Credenziali offline non valide.");
-    return false;
+    return email == savedEmail && encryptedInputPassword == savedEncryptedPassword;
   }
 
   Future<void> attemptLogin(String email, String password) async {
-    try {
-      await login(email, password);
-      print("Login online riuscito.");
-    } catch (e) {
-      print("Errore di login online. Provo con il login offline...");
-      final offlineResult = await loginOffline(email, password);
-      if (offlineResult) {
-        print("Accesso effettuato offline.");
+    final connected = await hasInternetConnection();
+
+    if (connected) {
+      try {
+        await login(email, password);
+        print("✅ Login online riuscito.");
+      } catch (e) {
+        print("❌ Login online fallito: $e");
+        throw Exception("Login online fallito: $e");
+      }
+    } else {
+      final offlineOk = await loginOffline(email, password);
+      if (offlineOk) {
+        print("✅ Login offline riuscito.");
       } else {
-        print("Login fallito: nessuna connessione e credenziali non valide.");
+        print("❌ Login offline fallito.");
+        throw Exception("Login offline fallito: nessuna connessione e credenziali non valide.");
       }
     }
   }
@@ -374,10 +375,10 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    print("Utente disconnesso");
+    print("👋 Utente disconnesso.");
   }
 
-  bool _isValidPassword(String password) {
+  bool isValidPassword(String password) {
     final passwordRegex = RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$');
     return passwordRegex.hasMatch(password);
   }
@@ -389,12 +390,9 @@ class AuthService {
         "user": email,
       });
 
-      final keyJson = jsonDecode(keyResponse);
-      if (keyJson["key"] == null) {
-        throw Exception("Chiave non trovata.");
-      }
+      final key = keyResponse["key"];
+      if (key == null) throw Exception("Chiave non trovata.");
 
-      final key = keyJson["key"];
       final hashedOldPassword = encrypt(oldPassword, key);
       final hashedNewPassword = encrypt(newPassword, key);
 
@@ -405,13 +403,12 @@ class AuthService {
         "new": hashedNewPassword,
       });
 
-      final changeJson = jsonDecode(changePasswordResponse);
-      if (changeJson["stato"] == true) {
+      if (changePasswordResponse["stato"] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(changeJson["msg"] ?? "Password cambiata con successo.")),
+          SnackBar(content: Text(changePasswordResponse["msg"] ?? "Password cambiata con successo.")),
         );
       } else {
-        throw Exception(changeJson["msg"] ?? "Errore durante il cambio password.");
+        throw Exception(changePasswordResponse["msg"] ?? "Errore cambio password.");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
