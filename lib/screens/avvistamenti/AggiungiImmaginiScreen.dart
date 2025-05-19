@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http_parser/http_parser.dart'; 
 import 'package:image_picker/image_picker.dart'; 
 import 'package:http/http.dart' as http; 
+import 'package:mime/mime.dart';
 
 class AggiungiImmaginiScreen extends StatefulWidget {
 
@@ -91,14 +92,14 @@ class _AggiungiImmaginiScreenState extends State<AggiungiImmaginiScreen> {
       var request = http.MultipartRequest("POST", uri);
       request.fields['request'] = 'addImage'; 
       request.fields['id'] = idAvvistamento.toString(); // ID dell’avvistamento
-      request.fields['fileName'] = imageFile.uri.pathSegments.last; // Nome del file
+      //request.fields['fileName'] = imageFile.uri.pathSegments.last; // Nome del file
 
       // Aggiunge il file immagine al corpo della richiesta
       request.files.add(
         await http.MultipartFile.fromPath(
           'file',
           imageFile.path,
-          contentType: MediaType('image', 'jpeg'), // Specifica il tipo MIME
+contentType: MediaType('image', lookupMimeType(imageFile.path)!.split('/')[1]),
         ),
       );
 

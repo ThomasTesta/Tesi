@@ -674,10 +674,9 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:seawatch/screens/HomepageScreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:convert';
-import 'package:uuid/uuid.dart';
-
 
 import 'package:seawatch/screens/avvistamenti/AggiungiImmaginiScreen.dart';
 
@@ -692,11 +691,11 @@ class NuovoAvvistamentoScreen extends StatefulWidget {
 
 class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final TextEditingController _esemplariController = TextEditingController();
   final TextEditingController _mareController = TextEditingController();
   final TextEditingController _ventoController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+
   String? _latitude;
   String? _longitude;
 
@@ -712,109 +711,128 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
     'Tartaruga': ['Caretta', 'Liuto'],
   };
 
-Future<void> _getCurrentLocation() async {
-  bool serviceEnabled;
-  LocationPermission permission;
-
-  // 1️⃣ Controllo se il GPS è attivo
-  serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("GPS disattivato! Attivalo per ottenere la posizione.")));
-    return;
-  }
-
-  // 2️⃣ Controllo lo stato dei permessi
-  permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Permesso di accesso alla posizione negato.")));
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("GPS disattivato!")));
       return;
     }
-  }
 
-  // 3️⃣ Se i permessi sono negati PERMANENTEMENTE, mostra un messaggio
-  if (permission == LocationPermission.deniedForever) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Permessi di posizione negati permanentemente. Vai nelle impostazioni per abilitarli."),
-        action: SnackBarAction(
-          label: "Apri Impostazioni",
-          onPressed: () {
-            Geolocator.openAppSettings();
-          },
-        ),
-      ),
-    );
-    return;
-  }
-
-  // 4️⃣ Se tutto è ok, ottieni la posizione
-  try {
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    setState(() {
-      _latitude = position.latitude.toString();
-      _longitude = position.longitude.toString();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Posizione acquisita con successo!")));
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore nell'ottenere la posizione: $e")));
-  }
-}
-
-
-  /// **🌍 Funzione per inviare l'avvistamento (mia logica)**
-Future<void> _sendAvvistamento() async {
-  if (!_formKey.currentState!.validate()) return;
-  if (_latitude == null || _longitude == null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Devi ottenere la posizione GPS!")));
-    return;
-  }
-
-  setState(() => _isSaving = true);
-
-  const url = 'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_sighting/sighting_api.php';
-  
-  // Genera un ID unico   // Genera un ID univoco come intero basato sul timestamp attuale
-
-  String avvistamentoId = DateTime.now().millisecondsSinceEpoch.toString();
-
-  final body = {
-    'request': 'saveAvvMob',
-    'idd': avvistamentoId, // Passa l'ID generato
-    'user': widget.userEmail,
-    'data': DateTime.now().toIso8601String(),
-    'esemplari': _esemplariController.text,
-    'latitudine': _latitude!,
-    'longitudine': _longitude!,
-    'specie': _selectedAnimale ?? '',
-    'sottospecie': _selectedSpecie ?? '',
-    'mare': _mareController.text,
-    'vento': _ventoController.text,
-    'note': _noteController.text,
-  };
-
-  try {
-    var response = await http.post(Uri.parse(url), body: body);
-    if (response.statusCode == 200 /*&& response.body == "true"*/) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Avvistamento salvato con successo!")));
-
-      // Passa l'ID generato alla schermata successiva
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => AggiungiImmaginiScreen(avvistamentoId: avvistamentoId)),
-
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore nel salvataggio.")));
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Permesso negato.")));
+        return;
+      }
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore di rete: $e")));
-  } finally {
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Permessi negati permanentemente.")));
+      return;
+    }
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _latitude = position.latitude.toString();
+        _longitude = position.longitude.toString();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Posizione acquisita!")));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+    }
+  }
+
+  Future<void> _sendAvvistamento() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Devi ottenere la posizione GPS!")));
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    String avvistamentoId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    final avvistamento = {
+      'idd': avvistamentoId,
+      'user': widget.userEmail,
+      'data': DateTime.now().toIso8601String(),
+      'esemplari': _esemplariController.text,
+      'latitudine': _latitude!,
+      'longitudine': _longitude!,
+      'specie': _selectedAnimale ?? '',
+      'sottospecie': _selectedSpecie ?? '',
+      'mare': _mareController.text,
+      'vento': _ventoController.text,
+      'note': _noteController.text,
+    };
+
+    final connectivity = await Connectivity().checkConnectivity();
+
+    if (connectivity == ConnectivityResult.none) {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> offlineData = prefs.getStringList('avvistamenti_offline') ?? [];
+      offlineData.add(jsonEncode(avvistamento));
+      await prefs.setStringList('avvistamenti_offline', offlineData);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Avvistamento salvato offline.")));
+      Navigator.pop(context);
+    } else {
+      await _sendToServer(avvistamento);
+    }
+
     setState(() => _isSaving = false);
   }
-}
 
+  Future<void> _sendToServer(Map<String, String> avvistamento) async {
+    const url = 'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_sighting/sighting_api.php';
+
+    try {
+      final response = await http.post(Uri.parse(url), body: {
+        'request': 'saveAvvMob',
+        ...avvistamento,
+      });
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Avvistamento inviato con successo!")));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AggiungiImmaginiScreen(avvistamentoId: avvistamento['idd']!)),
+        );
+      } else {
+        throw Exception("Errore dal server");
+      }
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> offlineData = prefs.getStringList('avvistamenti_offline') ?? [];
+      offlineData.add(jsonEncode(avvistamento));
+      await prefs.setStringList('avvistamenti_offline', offlineData);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore di rete. Avvistamento salvato offline.")));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncAvvistamentiOffline();
+  }
+
+  Future<void> _syncAvvistamentiOffline() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> offlineData = prefs.getStringList('avvistamenti_offline') ?? [];
+
+    List<String> remaining = [];
+    for (String avvJson in offlineData) {
+      final avv = jsonDecode(avvJson).cast<String, String>();
+      try {
+        await _sendToServer(avv);
+      } catch (_) {
+        remaining.add(avvJson);
+      }
+    }
+
+    await prefs.setStringList('avvistamenti_offline', remaining);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -835,53 +853,44 @@ Future<void> _sendAvvistamento() async {
                 validator: (value) => value!.isEmpty ? "Campo obbligatorio" : null,
               ),
               SizedBox(height: 16),
-
               ElevatedButton.icon(
                 onPressed: _getCurrentLocation,
                 icon: Icon(Icons.location_on),
                 label: Text(_latitude == null ? "Ottieni Posizione GPS" : "Posizione acquisita!"),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
               ),
-
               SizedBox(height: 16),
-
               DropdownButtonFormField(
                 value: _selectedAnimale,
                 items: animali.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                 onChanged: (val) => setState(() => _selectedAnimale = val),
                 decoration: InputDecoration(labelText: "Animale", icon: Icon(Icons.pets)),
               ),
-
               SizedBox(height: 16),
-
               DropdownButtonFormField(
                 value: _selectedSpecie,
-                items: _selectedAnimale != null ? specieMap[_selectedAnimale!]!.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList() : [],
+                items: _selectedAnimale != null
+                    ? specieMap[_selectedAnimale!]!.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList()
+                    : [],
                 onChanged: (val) => setState(() => _selectedSpecie = val as String?),
                 decoration: InputDecoration(labelText: "Specie", icon: Icon(Icons.category)),
               ),
-
               SizedBox(height: 16),
-
               TextFormField(
                 controller: _mareController,
                 decoration: InputDecoration(labelText: "Mare", icon: Icon(Icons.waves)),
               ),
               SizedBox(height: 16),
-
               TextFormField(
                 controller: _ventoController,
                 decoration: InputDecoration(labelText: "Vento", icon: Icon(Icons.air)),
               ),
               SizedBox(height: 16),
-
               TextFormField(
                 controller: _noteController,
                 decoration: InputDecoration(labelText: "Note", icon: Icon(Icons.note)),
               ),
-
               SizedBox(height: 32),
-
               ElevatedButton.icon(
                 onPressed: _sendAvvistamento,
                 icon: Icon(Icons.save),
