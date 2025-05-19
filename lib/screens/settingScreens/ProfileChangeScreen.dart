@@ -92,118 +92,118 @@ class _ProfileChangeScreenState extends State<ProfileChangeScreen> {
   }
 }
 */
-Future<bool> _updateUserInfo() async {
-  final prefs = await SharedPreferences.getInstance();
-  final email = prefs.getString('userEmail');
+  Future<bool> _updateUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('userEmail');
 
-  if (email == null) {
-    _showSnackBar('Errore: Utente non loggato');
+    if (email == null) {
+      _showSnackBar('Errore: Utente non loggato');
+      return false;
+    }
+
+    final url = Uri.parse(
+        'https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_settings/settings_api.php');
+    final requestBody = {
+      'request': 'setUserInfoMob',
+      'user': email,
+      'nome': firstNameController.text,
+      'cognome': lastNameController.text,
+    };
+
+    print('Invio richiesta UPDATE USER INFO con email: $email');
+    print('Dati inviati: $requestBody');
+
+    try {
+      final response = await http.post(url, body: requestBody);
+
+      print('Risposta ricevuta: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        if (result['stato'] == true) {
+          _showSnackBar('Dati aggiornati con successo');
+          return true;
+        }
+      } else {
+        print('Errore HTTP: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Errore: $e');
+      _showSnackBar('Errore durante il salvataggio');
+    }
     return false;
   }
 
-  final url = Uri.parse('https://isi-seawatch.csr.unibo.it/Sito/sito/templates/main_settings/settings_api.php');
-  final requestBody = {
-    'request': 'setUserInfoMob',
-    'user': email,
-    'nome': firstNameController.text,
-    'cognome': lastNameController.text,
-  };
+  Future<bool> uploadImage(File file, String user) async {
+    final url = Uri.parse(
+        "https://isi-seawatch.csr.unibo.it/Sito/sito/templates/single_sighting/single_api.php");
 
-  print('Invio richiesta UPDATE USER INFO con email: $email');
-  print('Dati inviati: $requestBody');
+    print('Inizio caricamento immagine per utente: $user');
+    print('File selezionato: ${file.uri.pathSegments.last}');
 
-  try {
-    final response = await http.post(url, body: requestBody);
+    try {
+      final request = http.MultipartRequest('POST', url)
+        ..fields['user'] = user
+        ..fields['request'] = "addImageProfileMob"
+        ..files.add(
+          http.MultipartFile(
+            'file',
+            file.readAsBytes().asStream(),
+            file.lengthSync(),
+            filename: file.uri.pathSegments.last,
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
 
-    print('Risposta ricevuta: ${response.body}');
+      print('Dati inviati: ${request.fields}');
 
-    if (response.statusCode == 200) {
-      final result = json.decode(response.body);
-      if (result['stato'] == true) {
-        _showSnackBar('Dati aggiornati con successo');
-        return true;
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      print('Risposta ricevuta: $responseBody');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(responseBody);
+        if (result['state'] == true) {
+          _showSnackBar('Immagine caricata con successo');
+          return true;
+        }
+      } else {
+        print('Errore HTTP: ${response.statusCode}');
       }
-    } else {
-      print('Errore HTTP: ${response.statusCode}');
+    } catch (e) {
+      print('Errore: $e');
+      _showSnackBar('Errore durante il caricamento');
     }
-  } catch (e) {
-    print('Errore: $e');
-    _showSnackBar('Errore durante il salvataggio');
+    return false;
   }
-  return false;
-}
 
-Future<bool> uploadImage(File file, String user) async {
-  final url = Uri.parse("https://isi-seawatch.csr.unibo.it/Sito/sito/templates/single_sighting/single_api.php");
+  Future<void> _handleImageUpload() async {
+    await _pickImage(); // Seleziona l'immagine
 
-  print('Inizio caricamento immagine per utente: $user');
-  print('File selezionato: ${file.uri.pathSegments.last}');
-
-  try {
-    final request = http.MultipartRequest('POST', url)
-      ..fields['user'] = user
-      ..fields['request'] = "addImageProfileMob"
-      ..files.add(
-        http.MultipartFile(
-          'file',
-          file.readAsBytes().asStream(),
-          file.lengthSync(),
-          filename: file.uri.pathSegments.last,
-          contentType: MediaType('image', 'jpeg'),
-        ),
-      );
-
-    print('Dati inviati: ${request.fields}');
-    
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-
-    print('Risposta ricevuta: $responseBody');
-
-    if (response.statusCode == 200) {
-      final result = json.decode(responseBody);
-      if (result['state'] == true) {
-        _showSnackBar('Immagine caricata con successo');
-        return true;
-      }
-    } else {
-      print('Errore HTTP: ${response.statusCode}');
+    if (_image == null) {
+      _showSnackBar("Nessuna immagine selezionata.");
+      return;
     }
-  } catch (e) {
-    print('Errore: $e');
-    _showSnackBar('Errore durante il caricamento');
+
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('userEmail');
+
+    if (email == null) {
+      _showSnackBar("Errore: Utente non loggato.");
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    bool success = await uploadImage(_image!, email);
+
+    setState(() => isLoading = false);
+
+    if (success) {
+      _showSnackBar("Immagine aggiornata con successo!");
+    }
   }
-  return false;
-}
-
-Future<void> _handleImageUpload() async {
-  await _pickImage(); // Seleziona l'immagine
-
-  if (_image == null) {
-    _showSnackBar("Nessuna immagine selezionata.");
-    return;
-  }
-
-  final prefs = await SharedPreferences.getInstance();
-  final email = prefs.getString('userEmail');
-
-  if (email == null) {
-    _showSnackBar("Errore: Utente non loggato.");
-    return;
-  }
-
-  setState(() => isLoading = true);
-
-  bool success = await uploadImage(_image!, email);
-
-  setState(() => isLoading = false);
-
-  if (success) {
-    _showSnackBar("Immagine aggiornata con successo!");
-  }
-}
-
-
 
   Future<void> _pickImage() async {
     final source = await showDialog<ImageSource>(
@@ -239,30 +239,29 @@ Future<void> _handleImageUpload() async {
   }
 
   Future<void> _uploadSelectedImage() async {
-  if (_image == null) {
-    _showSnackBar("Nessuna immagine selezionata.");
-    return;
+    if (_image == null) {
+      _showSnackBar("Nessuna immagine selezionata.");
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('userEmail');
+
+    if (email == null) {
+      _showSnackBar("Errore: Utente non loggato.");
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    bool success = await uploadImage(_image!, email);
+
+    setState(() => isLoading = false);
+
+    if (success) {
+      _showSnackBar("Immagine aggiornata con successo!");
+    }
   }
-
-  final prefs = await SharedPreferences.getInstance();
-  final email = prefs.getString('userEmail');
-
-  if (email == null) {
-    _showSnackBar("Errore: Utente non loggato.");
-    return;
-  }
-
-  setState(() => isLoading = true);
-
-  bool success = await uploadImage(_image!, email);
-
-  setState(() => isLoading = false);
-
-  if (success) {
-    _showSnackBar("Immagine aggiornata con successo!");
-  }
-}
-
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -270,22 +269,24 @@ Future<void> _handleImageUpload() async {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Modifica Profilo', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Modifica Profilo',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: theme.colorScheme.primary,
         elevation: 4,
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [theme.colorScheme.primary.withOpacity(0.1), theme.colorScheme.surface],
+            colors: [
+              theme.colorScheme.primary.withOpacity(0.1),
+              theme.colorScheme.surface
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -302,13 +303,16 @@ Future<void> _handleImageUpload() async {
                       onTap: _pickImage,
                       child: CircleAvatar(
                         radius: 80,
-                        backgroundImage: _image != null ? FileImage(_image!) : null,
-                        backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                        backgroundImage:
+                            _image != null ? FileImage(_image!) : null,
+                        backgroundColor:
+                            theme.colorScheme.secondary.withOpacity(0.1),
                         child: _image == null
                             ? Icon(
                                 Icons.camera_alt,
                                 size: 50,
-                                color: theme.colorScheme.onBackground.withOpacity(0.5),
+                                color: theme.colorScheme.onBackground
+                                    .withOpacity(0.5),
                               )
                             : null,
                       ),
@@ -330,32 +334,31 @@ Future<void> _handleImageUpload() async {
                       isBold: true,
                     ),
                     const SizedBox(height: 20),
-_buildButton(
-  text: 'Aggiorna immagine del profilo',
-  color: theme.colorScheme.secondary,
-  icon: Icons.image,
-  onPressed: _uploadSelectedImage,
-),
+                    _buildButton(
+                      text: 'Aggiorna immagine del profilo',
+                      color: theme.colorScheme.secondary,
+                      icon: Icons.image,
+                      onPressed: _uploadSelectedImage,
+                    ),
 
                     const SizedBox(height: 10),
                     // Pulsante per salvare le modifiche
-_buildButton(
-  text: 'Salva',
-  color: theme.colorScheme.primary,
-  icon: Icons.save,
-  onPressed: () async {
-    setState(() => isLoading = true);
-    
-    bool success = await _updateUserInfo();
+                    _buildButton(
+                      text: 'Salva',
+                      color: theme.colorScheme.primary,
+                      icon: Icons.save,
+                      onPressed: () async {
+                        setState(() => isLoading = true);
 
-    setState(() => isLoading = false);
+                        bool success = await _updateUserInfo();
 
-    if (success) {
-      Navigator.pop(context, true);
-    }
-  },
-),
+                        setState(() => isLoading = false);
 
+                        if (success) {
+                          Navigator.pop(context, true);
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -364,7 +367,11 @@ _buildButton(
   }
 
   // Funzione per creare un campo di input
-  Widget _buildInputField({required TextEditingController controller, required String label, required IconData icon, bool isBold = false}) {
+  Widget _buildInputField(
+      {required TextEditingController controller,
+      required String label,
+      required IconData icon,
+      bool isBold = false}) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -372,7 +379,8 @@ _buildButton(
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+          labelStyle: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
           prefixIcon: Icon(icon, color: Colors.blueAccent),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -381,7 +389,11 @@ _buildButton(
   }
 
   // Funzione per creare un pulsante
-  Widget _buildButton({required String text, required Color color, required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildButton(
+      {required String text,
+      required Color color,
+      required IconData icon,
+      required VoidCallback onPressed}) {
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 20),
@@ -395,4 +407,3 @@ _buildButton(
     );
   }
 }
-
