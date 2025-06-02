@@ -7,7 +7,6 @@ import 'package:seawatch/screens/settingScreens/SettingsScreen.dart';
 import 'package:seawatch/services/AuthServiceGeneral/AuthService.dart';
 import 'package:seawatch/services/ManagementTheme/ThemeProvider.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -70,13 +69,6 @@ l'avvistamento può avere più immagini, massimo 5, e vanno caricate ad una ad u
 la password nuova è criptata con la stessa key precdente 
 */
 
-/*
-Cosde da fare ancora : sono la gestioen del cambio password, nome e cognome 
-gestioen dell'immagine 
-gestione oglgine del dispositivo
-*/
 
-
-//aggiungere sfumatura card homepage
 
 //paassword (provathom) ciaothom
