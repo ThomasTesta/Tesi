@@ -677,7 +677,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:convert';
-
 import 'package:seawatch/screens/avvistamenti/AggiungiImmaginiScreen.dart';
 
 class NuovoAvvistamentoScreen extends StatefulWidget {
@@ -752,7 +751,7 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
     }
 
     setState(() => _isSaving = true);
-    String avvistamentoId = DateTime.now().millisecondsSinceEpoch.toString();
+    String avvistamentoId = DateTime.now().millisecondsSinceEpoch.toString();  //genero Id casuale avvistamento 
 
     final avvistamento = {
       'idd': avvistamentoId,
@@ -768,9 +767,10 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
       'note': _noteController.text,
     };
 
-    final connectivity = await Connectivity().checkConnectivity();
+    final connectivity = await Connectivity().checkConnectivity();  //controllo connesione 
 
     if (connectivity == ConnectivityResult.none) {
+      //salvo in locale 
       final prefs = await SharedPreferences.getInstance();
       final List<String> offlineData = prefs.getStringList('avvistamenti_offline') ?? [];
       offlineData.add(jsonEncode(avvistamento));
@@ -817,6 +817,8 @@ class _NuovoAvvistamentoScreenState extends State<NuovoAvvistamentoScreen> {
     _syncAvvistamentiOffline();
   }
 
+
+// Sincronizzo Offline
   Future<void> _syncAvvistamentiOffline() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> offlineData = prefs.getStringList('avvistamenti_offline') ?? [];
